@@ -6,14 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Trash, ArrowLeft, Wand2 } from "lucide-react";
+import { Trash, ArrowLeft, Wand2, RefreshCw } from "lucide-react";
 // @ts-ignore
 import { Page } from "@prisma/client";
 import Link from "next/link";
 import Editor from "@monaco-editor/react";
 import * as Babel from "@babel/standalone";
-import { useState } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { REACT_NATIVE_SYSTEM_PROMPT } from "@/lib/ai-prompt";
+import { MobilePreview } from "./mobile-preview";
 
 import {
   Form,
@@ -54,39 +55,6 @@ const formSchema = z.object({
 interface PageFormProps {
   initialData: Page;
 }
-
-const MobilePreview = ({ title, content }: { title: string; content: string }) => {
-  return (
-    <div className="mx-auto w-[320px] h-[640px] border-[12px] border-gray-900 rounded-[3rem] overflow-hidden bg-white shadow-xl relative">
-      {/* Notch */}
-      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-6 bg-gray-900 rounded-b-xl z-10"></div>
-
-      {/* Screen Content */}
-      <div className="h-full w-full overflow-y-auto pt-10 pb-4 px-4 bg-gray-50">
-        <div className="space-y-4">
-          {/* Header */}
-          <div className="h-4 w-1/3 bg-gray-200 rounded animate-pulse" />
-
-          {/* Title Preview */}
-          <h1 className="text-xl font-bold text-gray-900 break-words">
-            {title || "Page Title"}
-          </h1>
-
-          {/* Hero Image Placeholder */}
-          <div className="w-full aspect-video bg-gray-200 rounded-lg" />
-
-          {/* Content Preview */}
-          <div className="prose prose-sm max-w-none text-gray-600 break-words whitespace-pre-wrap">
-            {content || "Start typing to see content preview..."}
-          </div>
-        </div>
-      </div>
-
-      {/* Home Indicator */}
-      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gray-900 rounded-full opacity-20"></div>
-    </div>
-  );
-};
 
 export const PageForm = ({ initialData }: PageFormProps) => {
   const router = useRouter();
