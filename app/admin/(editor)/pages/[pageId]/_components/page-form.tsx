@@ -6,12 +6,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Trash, ArrowLeft } from "lucide-react";
+import { Trash, ArrowLeft, Wand2 } from "lucide-react";
 // @ts-ignore
 import { Page } from "@prisma/client";
 import Link from "next/link";
 import Editor from "@monaco-editor/react";
 import * as Babel from "@babel/standalone";
+import { useState } from "react";
+import { REACT_NATIVE_SYSTEM_PROMPT } from "@/lib/ai-prompt";
 
 import {
   Form,
@@ -22,6 +24,15 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -93,6 +104,41 @@ export const PageForm = ({ initialData }: PageFormProps) => {
 
   const { isSubmitting, isValid } = form.formState;
   const watchedValues = form.watch();
+
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [prompt, setPrompt] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const onAiGenerate = async () => {
+    if (!prompt.trim()) return;
+    
+    try {
+      setIsAiLoading(true);
+      const response = await axios.post("/api/chat", {
+        messages: [
+          { role: "system", content: REACT_NATIVE_SYSTEM_PROMPT },
+          { role: "user", content: prompt }
+        ]
+      });
+      
+      const aiMessage = response.data.choices[0].message.content;
+      console.log(aiMessage)
+      // Extract code block if present
+      const codeBlockRegex = /```(?:jsx|javascript|js)?\s*([\s\S]*?)\s*```/;
+      const match = aiMessage.match(codeBlockRegex);
+      const code = match ? match[1] : aiMessage;
+      
+      form.setValue("content", code, { shouldDirty: true, shouldTouch: true });
+      toast.success("AI generated code applied");
+      setPrompt("");
+      setIsDialogOpen(false);
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Failed to generate code: " + (error.response?.data || error.message));
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -193,7 +239,39 @@ export const PageForm = ({ initialData }: PageFormProps) => {
                   name="content"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Content</FormLabel>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Content</FormLabel>
+                        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" type="button" className="gap-2">
+                              <Wand2 className="w-4 h-4" />
+                              AI Generate
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Generate Page Content</DialogTitle>
+                              <DialogDescription>
+                                Describe the UI you want to build. The AI will generate React Native code for you.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                              <Textarea
+                                placeholder="e.g. Create a login screen with email, password fields and a submit button..."
+                                value={prompt}
+                                onChange={(e) => setPrompt(e.target.value)}
+                                className="h-32"
+                              />
+                            </div>
+                            <DialogFooter>
+                              <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                              <Button onClick={onAiGenerate} disabled={isAiLoading || !prompt.trim()}>
+                                {isAiLoading ? "Generating..." : "Generate"}
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                       <FormControl>
                         <div className="h-[500px] border rounded-md overflow-hidden">
                           <Editor
