@@ -79,7 +79,7 @@ export const PageForm = ({ initialData }: PageFormProps) => {
 
   const onAiGenerate = async () => {
     if (!prompt.trim()) return;
-    
+
     try {
       setIsAiLoading(true);
       const response = await axios.post("/api/chat", {
@@ -88,14 +88,14 @@ export const PageForm = ({ initialData }: PageFormProps) => {
           { role: "user", content: prompt }
         ]
       });
-      
+
       const aiMessage = response.data.choices[0].message.content;
       console.log(aiMessage)
       // Extract code block if present
       const codeBlockRegex = /```(?:jsx|javascript|js)?\s*([\s\S]*?)\s*```/;
       const match = aiMessage.match(codeBlockRegex);
       const code = match ? match[1] : aiMessage;
-      
+
       form.setValue("content", code, { shouldDirty: true, shouldTouch: true });
       toast.success("AI generated code applied");
       setPrompt("");
@@ -143,6 +143,32 @@ export const PageForm = ({ initialData }: PageFormProps) => {
       toast.error("Something went wrong");
     }
   }
+
+  const handleEditorWillMount = (monaco: any) => {
+    // Enable JSX/TSX support in the TypeScript compiler
+    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+      jsx: monaco.languages.typescript.JsxEmit.React,
+      jsxFactory: "React.createElement",
+      reactNamespace: "React",
+      allowNonTsExtensions: true,
+      allowJs: true,
+      target: monaco.languages.typescript.ScriptTarget.Latest,
+    });
+
+    // (Optional) Define a custom Dark Theme if 'vs-dark' isn't enough
+    monaco.editor.defineTheme("my-custom-dark", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "identifier", foreground: "9CDCFE" },
+        { token: "type", foreground: "4EC9B0" },
+        { token: "keyword", foreground: "C586C0" },
+      ],
+      colors: {
+        "editor.background": "#1E1E1E",
+      },
+    });
+  };
 
   return (
     <div className="h-full">
@@ -243,13 +269,15 @@ export const PageForm = ({ initialData }: PageFormProps) => {
                       <FormControl>
                         <div className="h-[500px] border rounded-md overflow-hidden">
                           <Editor
+                            defaultLanguage="javascript"
+                            path="file:///main.jsx"
                             height="100%"
-                            defaultLanguage="jsx"
                             value={field.value}
-                            theme="dark"
+                            theme="vs-dark" // Or use "my-custom-dark" defined above
+                            beforeMount={handleEditorWillMount}
                             onChange={(value) => field.onChange(value || "")}
                             options={{
-                              minimap: { enabled: false },
+                              minimap: { enabled: true },
                               lineNumbers: "on",
                               wordWrap: "on",
                               readOnly: isSubmitting
