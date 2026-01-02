@@ -59,13 +59,30 @@ model verificationtoken {
   @@unique([identifier, token], map: "VerificationToken_identifier_token_key")
 }
 
-model Page {
+model App {
   id          String   @id @default(uuid())
-  title       String
+  name        String
   slug        String   @unique
-  content         String? @db.Text
-  transpiled_code String? @db.Text
-  isPublished     Boolean @default(false)
+  description String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  pages       Page[]
+}
+
+model Page {
+  id              String   @id @default(uuid())
+  title           String
+  slug            String
+  content         String?  @db.Text
+  transpiled_code String?  @db.Text
+  isPublished     Boolean  @default(false)
+  
+  appId           String
+  app             App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([appId, slug])
 }
