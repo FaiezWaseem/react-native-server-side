@@ -26,6 +26,10 @@ Instruction:
   RefreshControl,
   ScrollView,
   AsyncStorage,
+  Modal,
+  WebView,
+  Appearance,
+  useColorScheme,
   Linking,
   redirectTo,
   props

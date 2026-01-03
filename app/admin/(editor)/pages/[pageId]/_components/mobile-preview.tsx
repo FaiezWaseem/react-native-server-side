@@ -29,12 +29,73 @@ import {
   Easing,
   RefreshControl,
   Linking,
-  Dimensions
+  Dimensions,
+  Appearance,
+  useColorScheme,
+  Modal,
 } from 'react-native-web';
+
+const AsyncStorage = {
+  getItem: async (key: string) => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(key);
+    }
+    return null;
+  },
+  setItem: async (key: string, value: string) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(key, value);
+    }
+  },
+  removeItem: async (key: string) => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(key);
+    }
+  },
+  clear: async () => {
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+    }
+  }
+};
+
+const WebView = ({ source ,style }: { source: {
+  uri: string;
+}, style?: any }) => (<View style={{ height: '100%', width: '100%', ...style }}>
+  <iframe src={source.uri} style={{ height: '100%', width: '100%' }} />
+  </View>)
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError: (error: Error) => void }, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    this.props.onError(error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return null;
+    }
+    return this.props.children;
+  }
+}
+
 
 const Platform = {
   OS: 'web',
 }
+
+
+
+
+
 // Mock missing components/APIs if necessary
 const redirectTo = (url: string) => console.log('Redirect to:', url);
 
@@ -66,6 +127,12 @@ const useCodeParser = (codeString: string) => {
     ScrollView,
     ActivityIndicator,
     //@ts-ignore
+    Appearance,
+    useColorScheme,
+    Modal,
+    AsyncStorage,
+    WebView,
+    //@ts-ignore
     Animated,
     //@ts-ignore
     Easing,
@@ -76,7 +143,7 @@ const useCodeParser = (codeString: string) => {
     //@ts-ignore
     Dimensions,
     redirectTo,
-    props: { navigation: { navigate: console.log }, route: { params: {} } }
+    props: { navigation: { navigate: console.log }, route: { params: {} } },
   }), []);
 
   useEffect(() => {
@@ -134,6 +201,13 @@ interface MobilePreviewProps {
 export const MobilePreview = ({ title, content }: MobilePreviewProps) => {
   const [key, setKey] = useState(0);
   const { Component, error } = useCodeParser(content);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRuntimeError(null);
+  }, [content, key]);
+
+  const displayError = error || runtimeError;
 
   return (
     <div className="mx-auto w-[320px] h-[640px] border-[12px] border-gray-900 rounded-[3rem] overflow-hidden bg-white shadow-xl relative">
@@ -146,19 +220,21 @@ export const MobilePreview = ({ title, content }: MobilePreviewProps) => {
           <div className="flex flex-col items-center justify-center h-full text-gray-400 p-8 text-center">
             <p>Start typing or use AI to generate a preview</p>
           </div>
-        ) : error ? (
+        ) : displayError ? (
           <div className="flex flex-col items-center justify-center h-full text-red-500 p-4 text-center overflow-auto">
             <p className="font-bold mb-2">Error</p>
-            <p className="text-xs text-left break-words font-mono bg-red-50 p-2 rounded w-full">{error}</p>
+            <p className="text-xs text-left break-words font-mono bg-red-50 p-2 rounded w-full">{displayError}</p>
           </div>
         ) : (
           <div className="flex-1 w-full h-full relative" key={key}>
-            {/* 
-                  We need a container that mimics the React Native root view.
-                  react-native-web components usually render as divs/spans with specific classes.
-                  Since we are running this in the main DOM, styles should apply naturally if react-native-web is working.
-                */}
-            {Component}
+            <ErrorBoundary onError={(e) => setRuntimeError(e.message)}>
+              {/* 
+                    We need a container that mimics the React Native root view.
+                    react-native-web components usually render as divs/spans with specific classes.
+                    Since we are running this in the main DOM, styles should apply naturally if react-native-web is working.
+                  */}
+              {Component}
+            </ErrorBoundary>
           </div>
         )}
       </div>

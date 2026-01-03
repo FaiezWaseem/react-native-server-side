@@ -48,7 +48,8 @@ export async function POST(req: Request) {
       secure: process.env.NODE_ENV === "production",
     });
     return res;
-  } catch {
+  } catch (error) {
+    console.error("Login error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
